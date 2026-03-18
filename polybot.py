@@ -21,7 +21,9 @@ import asyncio
 import json
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 from dotenv import load_dotenv
@@ -29,9 +31,8 @@ from dotenv import load_dotenv
 # ─── External deps ─────────────────────────────────────────────────────────────
 import aiohttp
 import numpy as np
-import pandas as pd
 from web3 import Web3
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -116,7 +117,7 @@ class Signal:
     market_price: float # current market price
     edge: float         # model_prob - market_price  (signed)
     confidence: float   # 0–1
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: utcnow().isoformat())
 
 
 @dataclass
@@ -130,7 +131,7 @@ class Position:
     shares: float
     pnl: float = 0.0
     stop_loss: float = 0.0
-    opened_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    opened_at: str = field(default_factory=lambda: utcnow().isoformat())
     status: str = "open"
 
 
@@ -594,7 +595,7 @@ class TelegramBot:
         )
         if action == "close":
             text += f"P&L: <b>{pnl_s}</b>\n"
-        text += f"\n🕐 {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        text += f"\n🕐 {utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
         await self.send(text)
 
     async def send_signal_alert(self, sig: Signal):
@@ -611,7 +612,7 @@ class TelegramBot:
         wr  = (portfolio.trades_won / max(1, portfolio.trades_total)) * 100
         pnl = portfolio.daily_pnl
         text = (
-            f"📊 <b>Daily Summary — {datetime.utcnow().strftime('%Y-%m-%d')}</b>\n\n"
+            f"📊 <b>Daily Summary — {utcnow().strftime('%Y-%m-%d')}</b>\n\n"
             f"Portfolio: <b>${portfolio.total_value:,.2f}</b>\n"
             f"Daily P&L: <b>{'+'if pnl>=0 else ''}{pnl:.2f}</b>\n"
             f"All-time P&L: <b>${portfolio.all_time_pnl:+.2f}</b>\n"
@@ -736,7 +737,7 @@ class TradingBot:
 
         # State
         self._scan_count   = 0
-        self._last_daily   = datetime.utcnow().date()
+        self._last_daily   = utcnow().date()
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -746,7 +747,7 @@ class TradingBot:
         await self.tg.send("🤖 <b>PolyBot Started</b>\n\nScanning Polymarket…")
 
         if self.tg.app:
-            asyncio.create_task(self.tg.app.run_polling(close_loop=False))
+            asyncio.create_task(self.tg.app.run_polling(drop_pending_updates=True))
 
         while True:
             try:
@@ -877,7 +878,7 @@ class TradingBot:
         await self.tg.send_trade_alert(pos, "close")
 
     async def _daily_summary_check(self):
-        today = datetime.utcnow().date()
+        today = utcnow().date()
         if today != self._last_daily:
             self._last_daily = today
             await self.tg.send_daily_summary(self.portfolio)
