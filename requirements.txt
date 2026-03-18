@@ -1,0 +1,6 @@
+aiohttp
+python-dotenv
+web3
+python-telegram-bot==20.7
+pandas
+numpy
