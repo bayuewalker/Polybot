@@ -1,6 +1,6 @@
-aiohttp
-python-dotenv
-web3
-python-telegram-bot==20.7
-pandas
-numpy
+aiohttp==3.9.5
+python-dotenv==1.0.1
+web3==6.20.0
+python-telegram-bot==21.6
+pandas==2.2.2
+numpy==1.26.4
